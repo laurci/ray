@@ -18,6 +18,15 @@ impl ActivationFunction {
             ActivationFunction::Sigmoid => x.mapv(|x| 1.0 / (1.0 + (-x).exp())),
         }
     }
+
+    pub fn derivative(&self, z: &Array1<f32>) -> Array1<f32> {
+        match self {
+            ActivationFunction::Sigmoid => {
+                let s = self.activate(z);
+                &s * &(1.0 - &s)
+            }
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -95,13 +104,31 @@ pub struct DataPoint {
 pub struct Trainer<'a> {
     pub network: &'a mut NeuralNetwork,
     pub learning_rate: f32,
+    pub momentum: f32,
+    pub weight_velocities: Vec<Array2<f32>>,
+    pub bias_velocities: Vec<Array1<f32>>,
 }
 
 impl<'a> Trainer<'a> {
-    pub fn new(network: &'a mut NeuralNetwork, learning_rate: f32) -> Self {
+    pub fn new(network: &'a mut NeuralNetwork, learning_rate: f32, momentum: f32) -> Self {
+        let weight_velocities = network
+            .layers
+            .iter()
+            .map(|layer| Array2::zeros(layer.weights.raw_dim()))
+            .collect();
+
+        let bias_velocities = network
+            .layers
+            .iter()
+            .map(|layer| Array1::zeros(layer.biases.len()))
+            .collect();
+
         Trainer {
             network,
             learning_rate,
+            momentum,
+            weight_velocities,
+            bias_velocities,
         }
     }
 
@@ -135,8 +162,11 @@ impl<'a> Trainer<'a> {
                 let grad_w = &total_weight_grads[i] * (self.learning_rate / data_len);
                 let grad_b = &total_bias_grads[i] * (self.learning_rate / data_len);
 
-                layer.weights -= &grad_w;
-                layer.biases -= &grad_b;
+                self.weight_velocities[i] = &self.weight_velocities[i] * self.momentum - &grad_w;
+                self.bias_velocities[i] = &self.bias_velocities[i] * self.momentum - &grad_b;
+
+                layer.weights += &self.weight_velocities[i];
+                layer.biases += &self.bias_velocities[i];
             }
 
             if epoch % 5000 == 0 || epoch == epochs - 1 {
@@ -150,9 +180,9 @@ impl<'a> Trainer<'a> {
         data_point: &DataPoint,
     ) -> (Vec<Array2<f32>>, Vec<Array1<f32>>, f32) {
         let mut activations = Vec::new();
+        let mut zs = Vec::new();
         activations.push(data_point.inputs.clone());
 
-        let mut zs = Vec::new();
         for layer in &self.network.layers {
             let z = layer.weights.dot(activations.last().unwrap()) + &layer.biases;
             zs.push(z.clone());
@@ -166,22 +196,22 @@ impl<'a> Trainer<'a> {
         let error = error_signal.mapv(|e| e * e).sum() / error_signal.len() as f32;
 
         let mut deltas = Vec::new();
-        let output_activation = output_activations;
-        let delta = match self.network.layers.last().unwrap().activation {
-            ActivationFunction::Sigmoid => {
-                error_signal * output_activation * (1.0 - output_activation)
-            }
-        };
+        let delta = error_signal
+            * self
+                .network
+                .layers
+                .last()
+                .unwrap()
+                .activation
+                .derivative(&zs.last().unwrap());
+
         deltas.push(delta);
 
         for l in (1..self.network.layers.len()).rev() {
             let layer = &self.network.layers[l];
             let delta_next = &deltas[0];
-            let activation = &activations[l];
-            let delta = layer.weights.t().dot(delta_next)
-                * match self.network.layers[l - 1].activation {
-                    ActivationFunction::Sigmoid => activation * (1.0 - activation),
-                };
+            let sp = self.network.layers[l - 1].activation.derivative(&zs[l - 1]);
+            let delta = layer.weights.t().dot(delta_next) * sp;
             deltas.insert(0, delta);
         }
 

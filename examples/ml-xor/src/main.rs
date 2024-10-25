@@ -30,7 +30,7 @@ fn main() -> Result<()> {
         },
     ];
 
-    let mut trainer = Trainer::new(&mut network, 0.1f32);
+    let mut trainer = Trainer::new(&mut network, 0.1f32, 0.9f32);
     trainer.train(&training_data, 50_000); // too many, but ok.
 
     println!("test");
