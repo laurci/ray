@@ -3,6 +3,7 @@ pub use ndarray as nd;
 use rand::rngs::StdRng;
 use rand_distr::{Distribution, Normal};
 use ray_shared::result::{bail, Result};
+use rayon::prelude::*;
 
 use nd::{Array1, Array2, Axis};
 
@@ -106,23 +107,27 @@ impl<'a> Trainer<'a> {
 
     pub fn train(&mut self, data: &[DataPoint], epochs: usize) {
         for epoch in 0..epochs {
-            let mut total_weight_grads = Vec::new();
-            let mut total_bias_grads = Vec::new();
-            for layer in &self.network.layers {
-                total_weight_grads.push(Array2::zeros(layer.weights.raw_dim()));
-                total_bias_grads.push(Array1::zeros(layer.biases.len()));
-            }
-            let mut total_error = 0.0f32;
-
-            for point in data.iter() {
-                let (nabla_w, nabla_b, error) = self.compute_gradients(point);
-
-                for i in 0..self.network.layers.len() {
-                    total_weight_grads[i] += &nabla_w[i];
-                    total_bias_grads[i] += &nabla_b[i];
-                }
-                total_error += error;
-            }
+            let (total_weight_grads, total_bias_grads, total_error) = data
+                .par_iter()
+                .map(|point| self.compute_gradients(point))
+                .reduce(
+                    || {
+                        let mut total_weight_grads = Vec::new();
+                        let mut total_bias_grads = Vec::new();
+                        for layer in &self.network.layers {
+                            total_weight_grads.push(Array2::zeros(layer.weights.raw_dim()));
+                            total_bias_grads.push(Array1::zeros(layer.biases.len()));
+                        }
+                        (total_weight_grads, total_bias_grads, 0.0f32)
+                    },
+                    |(mut w1, mut b1, e1), (w2, b2, e2)| {
+                        for i in 0..w1.len() {
+                            w1[i] += &w2[i];
+                            b1[i] += &b2[i];
+                        }
+                        (w1, b1, e1 + e2)
+                    },
+                );
 
             let data_len = data.len() as f32;
 
@@ -134,7 +139,7 @@ impl<'a> Trainer<'a> {
                 layer.biases -= &grad_b;
             }
 
-            if epoch % 1000 == 0 || epoch == epochs - 1 {
+            if epoch % 5000 == 0 || epoch == epochs - 1 {
                 println!("Epoch {}: Error = {}", epoch, total_error / data_len);
             }
         }
@@ -162,14 +167,21 @@ impl<'a> Trainer<'a> {
 
         let mut deltas = Vec::new();
         let output_activation = output_activations;
-        let delta = error_signal * output_activation * (1.0 - output_activation);
+        let delta = match self.network.layers.last().unwrap().activation {
+            ActivationFunction::Sigmoid => {
+                error_signal * output_activation * (1.0 - output_activation)
+            }
+        };
         deltas.push(delta);
 
         for l in (1..self.network.layers.len()).rev() {
             let layer = &self.network.layers[l];
             let delta_next = &deltas[0];
             let activation = &activations[l];
-            let delta = layer.weights.t().dot(delta_next) * activation * (1.0 - activation);
+            let delta = layer.weights.t().dot(delta_next)
+                * match self.network.layers[l - 1].activation {
+                    ActivationFunction::Sigmoid => activation * (1.0 - activation),
+                };
             deltas.insert(0, delta);
         }
 
