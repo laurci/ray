@@ -10,21 +10,27 @@ use nd::{Array1, Array2, Axis};
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum ActivationFunction {
     Sigmoid,
+    ReLU,
+    Linear,
 }
 
 impl ActivationFunction {
     pub fn activate(&self, x: &Array1<f32>) -> Array1<f32> {
         match self {
             ActivationFunction::Sigmoid => x.mapv(|x| 1.0 / (1.0 + (-x).exp())),
+            ActivationFunction::ReLU => x.mapv(|x| x.max(0.0)),
+            ActivationFunction::Linear => x.clone(),
         }
     }
 
-    pub fn derivative(&self, z: &Array1<f32>) -> Array1<f32> {
+    pub fn derivative(&self, x: &Array1<f32>) -> Array1<f32> {
         match self {
             ActivationFunction::Sigmoid => {
-                let s = self.activate(z);
-                &s * &(1.0 - &s)
+                let a = self.activate(x);
+                &a * &(1.0 - &a)
             }
+            ActivationFunction::ReLU => x.mapv(|x| if x > 0.0 { 1.0 } else { 0.0 }),
+            ActivationFunction::Linear => Array1::ones(x.len()),
         }
     }
 }
@@ -43,7 +49,12 @@ impl Layer {
         activation: ActivationFunction,
         rng: &mut StdRng,
     ) -> Self {
-        let std_dev = ((2.0) / (input_size + output_size) as f32).sqrt();
+        let std_dev = match activation {
+            ActivationFunction::Sigmoid | ActivationFunction::Linear => {
+                (2.0 / (input_size + output_size) as f32).sqrt()
+            }
+            ActivationFunction::ReLU => (2.0 / input_size as f32).sqrt(),
+        };
         let normal = Normal::new(0.0, std_dev).unwrap();
         let weights = Array2::from_shape_fn((output_size, input_size), |_| normal.sample(rng));
         let biases = Array1::zeros(output_size);
@@ -169,9 +180,7 @@ impl<'a> Trainer<'a> {
                 layer.biases += &self.bias_velocities[i];
             }
 
-            if epoch % 5000 == 0 || epoch == epochs - 1 {
-                println!("Epoch {}: Error = {}", epoch, total_error / data_len);
-            }
+            println!("Epoch {}: Error = {}", epoch, total_error / data_len);
         }
     }
 

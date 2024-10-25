@@ -1,0 +1,11 @@
+[package]
+name = "example-ml-mnist"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ray-shared = { path = "../../lib/shared" }
+ray-ml = { path = "../../lib/ml" }
+rand = "0.8.5"
+image = "0.25.4"
+csv = "1.3.0"

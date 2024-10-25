@@ -1,8 +1,3 @@
 [workspace]
 resolver = "2"
-members = [
-    "lib/shared",
-    "lib/ml",
-
-    "examples/ml-xor",
-]
+members = ["lib/shared", "lib/ml", "examples/ml-xor", "examples/ml-mnist"]
