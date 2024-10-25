@@ -1,0 +1,24 @@
+{
+  "name": "raymed",
+  "author": "Alex Jonny",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "api": "yarn workspace api",
+    "format": "prettier --write .",
+    "web": "yarn workspace web"
+  },
+  "devDependencies": {
+    "prettier": "^3.3.3",
+    "prettier-plugin-organize-imports": "^4.0.0",
+    "prettier-plugin-packagejson": "^2.5.1",
+    "prettier-plugin-tailwindcss": "^0.6.6",
+    "typescript": "^5.5.4"
+  },
+  "packageManager": "yarn@4.4.0"
+}

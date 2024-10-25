@@ -1,0 +1,25 @@
+{
+  "name": "api",
+  "type": "module",
+  "scripts": {
+    "build": "BUNDLE_PROD=true tsup",
+    "dev": "tsup --watch --onSuccess \"dotenv -e .env -e .env.development -- node ./dist/main.mjs | pino-pretty\"",
+    "start": "node ./dist/main.mjs"
+  },
+  "dependencies": {
+    "@baeta/env": "^0.0.5",
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "pino": "^9.3.2"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.2.0",
+    "dotenv-cli": "^7.4.2",
+    "pino-pretty": "^11.2.2",
+    "ts-node": "^10.9.2",
+    "tsup": "^8.2.4",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.4"
+  }
+}

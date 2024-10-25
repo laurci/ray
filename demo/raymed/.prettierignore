@@ -1,0 +1,13 @@
+### yarn ###
+
+node_modules
+.yarn/*
+.pnp.*
+
+### build ###
+dist
+.turbo
+.next
+
+### misc ###
+.changeset/**/*.md
