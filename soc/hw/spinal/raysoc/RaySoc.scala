@@ -1,17 +1,24 @@
 package raysoc
 
+import raysoc.utils.Bin
+
 import spinal.core._
 
 import vexriscv._
 import vexriscv.plugin._
 import spinal.lib.bus.amba4.axi._
 import spinal.lib.bus.amba3.apb._
+import spinal.lib.com.uart._
+import spinal.lib.io._
+import spinal.lib.master
+import scala.collection.mutable.ArrayBuffer
+import spinal.lib.bus.misc.SizeMapping
 
-import raysoc.utils.Bin
 
 case class RaySoc() extends Component {
   val io = new Bundle {
     val leds = out Bits(4 bits)
+    val uart = master(Uart())
   }
 
   val plugins = List(
@@ -77,7 +84,8 @@ case class RaySoc() extends Component {
 
   val resetCtrlDomain = ClockDomain.external(
     "",
-    ClockDomainConfig(resetKind=BOOT)
+    ClockDomainConfig(resetKind=BOOT),
+    frequency = FixedFrequency(100 MHz)
   )
 
   val resetCtrl = new ClockingArea(resetCtrlDomain) {
@@ -92,7 +100,8 @@ case class RaySoc() extends Component {
 
   val coreDomain = ClockDomain(
       clock = resetCtrlDomain.readClockWire,
-      reset = resetCtrl.systemReset
+      reset = resetCtrl.systemReset,
+      frequency = resetCtrlDomain.frequency
   )
 
   val core = new ClockingArea(coreDomain) {
@@ -119,9 +128,9 @@ case class RaySoc() extends Component {
         idWidth = 4
     )   
 
-    var programPath = sys.env.get("FIRMWARE_BIN_PATH").getOrElse("")
+    var programPath = sys.env.get("FIRMWARE_BIN_PATH").getOrElse("../target/riscv32imac-unknown-none-elf/release/firmware-test.bin")
     if(programPath == "") {
-        throw new IllegalArgumentException("FIRMWARE_BIN_PATH missing")
+      println("FIRMWARE_BIN_PATH missing. set it to the path of the test firmware binary")
     }
 
     println("Loading program from" + programPath)
@@ -138,7 +147,7 @@ case class RaySoc() extends Component {
     val axiCrossbar = Axi4CrossbarFactory()
     axiCrossbar.addSlaves(
         memory.io.axi    -> (0x00000000L,   4 kB),
-        apbBridge.io.axi -> (0x10000000L,   1 MB)
+        apbBridge.io.axi -> (0x10000000L,   1 MB),
     )
 
     axiCrossbar.addConnections(
@@ -148,10 +157,43 @@ case class RaySoc() extends Component {
 
     axiCrossbar.build()
 
-    val ledReg = Apb3SlaveFactory(apbBridge.io.apb)
-        .createReadWrite(Bits(4 bits), 0x10000000L, 0)
-        
-    io.leds := ledReg
+    val apbMapping = ArrayBuffer[(Apb3, SizeMapping)]()
+
+    val ledCtrl = Apb3Gpio(
+      gpioWidth = 4,
+      withReadSync = true
+    )
+    apbMapping += ledCtrl.io.apb -> (0x10000000L, 4 kB)
+
+
+  val uartCtrl = Apb3UartCtrl(UartCtrlMemoryMappedConfig(
+      uartCtrlConfig = UartCtrlGenerics(
+        dataWidthMax      = 8,
+        clockDividerWidth = 20,
+        preSamplingSize   = 1,
+        samplingSize      = 5,
+        postSamplingSize  = 2
+      ),
+      initConfig = UartCtrlInitConfig(
+        baudrate = 115200,
+        dataLength = 7,  //7 => 8 bits
+        parity = UartParityType.NONE,
+        stop = UartStopType.ONE
+      ),
+      txFifoDepth = 16,
+      rxFifoDepth = 16
+    ))
+    apbMapping += uartCtrl.io.apb -> (0x10010000L, 4 kB)
+
+    val apbDecoder = Apb3Decoder(
+      master = apbBridge.io.apb,
+      slaves = apbMapping.toSeq
+    )
+    
+    io.leds <> ledCtrl.io.gpio.write(3 downto 0)
+    ledCtrl.io.gpio.read <> 0
+    
+    io.uart <> uartCtrl.io.uart
   }
 
   noIoPrefix()

@@ -14,14 +14,21 @@ fn delay(cycles: u32) {
     }
 }
 
+fn init_leds() {
+    unsafe {
+        *(0x10000008 as *mut u32) = 0xff;
+    }
+}
+
 fn set_leds(mask: u32) {
     unsafe {
-        *(0x10000000 as *mut u32) = mask;
+        *(0x10000004 as *mut u32) = mask;
     }
 }
 
 #[entry]
 fn main() -> ! {
+    init_leds();
     let mut mask = 0x40;
     loop {
         set_leds(mask);
@@ -29,6 +36,6 @@ fn main() -> ! {
         if mask == 0 {
             mask = 0x40;
         }
-        delay(600000);
+        delay(300000);
     }
 }
