@@ -134,11 +134,11 @@ async function patientRoutes(fastify: FastifyInstance, options: RouteShorthandOp
         const patientPrompt = await getPatientPrompt(id);
 
         if (!patientPrompt) {
-            reply.code(404).send({ error: "Patient not found" });
+            reply.code(404).send({ error: "Patient or patient not found" });
             return;
         }
 
-        reply.send({ prompt: patientPrompt });
+        reply.send({ patientPrompt });
     });
 }
 
