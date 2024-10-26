@@ -63,17 +63,24 @@ fn main() -> Result<()> {
         })
         .collect();
 
-    let mut trainer = Trainer::new(&mut network, 0.2f32, 0.7f32);
+    let mut trainer = Trainer::new(&mut network, 0.2f32, 0.5f32);
 
-    let epochs = 1_000;
+    let epochs = 100;
     let start_time = Instant::now();
     trainer.train(&training_data, epochs);
     let duration = start_time.elapsed();
     println!("Training completed in {:?}", duration);
 
+    let model_path = PathBuf::from("trained_model.bin");
+    network.save_to_file(&model_path)?;
+    println!("Model saved to {:?}", model_path);
+
+    let loaded_network = NeuralNetwork::load_from_file(&model_path)?;
+    println!("Model loaded from {:?}", model_path);
+
     let mut correct = 0;
     for point in &test_data {
-        let output = network.feedforward(&point.inputs);
+        let output = loaded_network.feedforward(&point.inputs);
         let prediction = output
             .iter()
             .enumerate()

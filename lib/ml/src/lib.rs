@@ -4,10 +4,12 @@ use rand::rngs::StdRng;
 use rand_distr::{Distribution, Normal};
 use ray_shared::result::{bail, Result};
 use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 
 use nd::{Array1, Array2, Axis};
 
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Debug, Serialize, Deserialize)]
 pub enum ActivationFunction {
     Sigmoid,
     ReLU,
@@ -35,10 +37,10 @@ impl ActivationFunction {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Layer {
-    pub weights: Array2<f32>,
-    pub biases: Array1<f32>,
+    pub weights: Vec<Vec<f32>>,
+    pub biases: Vec<f32>,
     pub activation: ActivationFunction,
 }
 
@@ -56,8 +58,12 @@ impl Layer {
             ActivationFunction::ReLU => (2.0 / input_size as f32).sqrt(),
         };
         let normal = Normal::new(0.0, std_dev).unwrap();
-        let weights = Array2::from_shape_fn((output_size, input_size), |_| normal.sample(rng));
-        let biases = Array1::zeros(output_size);
+        let weights_array =
+            Array2::from_shape_fn((output_size, input_size), |_| normal.sample(rng));
+        let biases_array = Array1::zeros(output_size);
+
+        let weights = weights_array.outer_iter().map(|row| row.to_vec()).collect();
+        let biases = biases_array.to_vec();
 
         Layer {
             weights,
@@ -65,9 +71,21 @@ impl Layer {
             activation,
         }
     }
+
+    pub fn weights_array(&self) -> Array2<f32> {
+        Array2::from_shape_vec(
+            (self.biases.len(), self.weights[0].len()),
+            self.weights.iter().flatten().cloned().collect(),
+        )
+        .unwrap()
+    }
+
+    pub fn biases_array(&self) -> Array1<f32> {
+        Array1::from(self.biases.clone())
+    }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NeuralNetwork {
     pub layers: Vec<Layer>,
 }
@@ -98,11 +116,25 @@ impl NeuralNetwork {
         let mut activations = input.clone();
 
         for layer in &self.layers {
-            let z = layer.weights.dot(&activations) + &layer.biases;
+            let weights = layer.weights_array();
+            let biases = layer.biases_array();
+            let z = weights.dot(&activations) + &biases;
             activations = layer.activation.activate(&z);
         }
 
         activations
+    }
+
+    pub fn save_to_file(&self, path: &PathBuf) -> Result<()> {
+        let serialized = bincode::serialize(self).unwrap();
+        std::fs::write(path, serialized).unwrap();
+        Ok(())
+    }
+
+    pub fn load_from_file(path: &PathBuf) -> Result<Self> {
+        let bytes = std::fs::read(path).unwrap();
+        let network: NeuralNetwork = bincode::deserialize(&bytes).unwrap();
+        Ok(network)
     }
 }
 
@@ -125,7 +157,7 @@ impl<'a> Trainer<'a> {
         let weight_velocities = network
             .layers
             .iter()
-            .map(|layer| Array2::zeros(layer.weights.raw_dim()))
+            .map(|layer| Array2::zeros((layer.biases.len(), layer.weights[0].len())))
             .collect();
 
         let bias_velocities = network
@@ -153,7 +185,8 @@ impl<'a> Trainer<'a> {
                         let mut total_weight_grads = Vec::new();
                         let mut total_bias_grads = Vec::new();
                         for layer in &self.network.layers {
-                            total_weight_grads.push(Array2::zeros(layer.weights.raw_dim()));
+                            total_weight_grads
+                                .push(Array2::zeros((layer.biases.len(), layer.weights[0].len())));
                             total_bias_grads.push(Array1::zeros(layer.biases.len()));
                         }
                         (total_weight_grads, total_bias_grads, 0.0f32)
@@ -176,11 +209,16 @@ impl<'a> Trainer<'a> {
                 self.weight_velocities[i] = &self.weight_velocities[i] * self.momentum - &grad_w;
                 self.bias_velocities[i] = &self.bias_velocities[i] * self.momentum - &grad_b;
 
-                layer.weights += &self.weight_velocities[i];
-                layer.biases += &self.bias_velocities[i];
+                let weights_array = layer.weights_array() + &self.weight_velocities[i];
+                let biases_array = layer.biases_array() + &self.bias_velocities[i];
+
+                layer.weights = weights_array.outer_iter().map(|row| row.to_vec()).collect();
+                layer.biases = biases_array.to_vec();
             }
 
-            println!("Epoch {}: Error = {}", epoch, total_error / data_len);
+            if epoch % 1 == 0 || epoch == epochs - 1 {
+                println!("Epoch {}: Error = {}", epoch, total_error / data_len);
+            }
         }
     }
 
@@ -193,7 +231,9 @@ impl<'a> Trainer<'a> {
         activations.push(data_point.inputs.clone());
 
         for layer in &self.network.layers {
-            let z = layer.weights.dot(activations.last().unwrap()) + &layer.biases;
+            let weights = layer.weights_array();
+            let biases = layer.biases_array();
+            let z = weights.dot(activations.last().unwrap()) + &biases;
             zs.push(z.clone());
             let activation = layer.activation.activate(&z);
             activations.push(activation);
@@ -220,7 +260,8 @@ impl<'a> Trainer<'a> {
             let layer = &self.network.layers[l];
             let delta_next = &deltas[0];
             let sp = self.network.layers[l - 1].activation.derivative(&zs[l - 1]);
-            let delta = layer.weights.t().dot(delta_next) * sp;
+            let weights = layer.weights_array();
+            let delta = weights.t().dot(delta_next) * sp;
             deltas.insert(0, delta);
         }
 
