@@ -31,3 +31,6 @@ __pycache__
 .env
 .env.development
 .env.local
+
+### hw_build ###
+hw_interface/build
