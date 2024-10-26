@@ -12,11 +12,11 @@ fn main() -> Result<()> {
     let seed: u64 = 42;
     let mut rng = StdRng::seed_from_u64(seed);
 
-    let layer_sizes = [28 * 28, 28, 16, 10];
+    let layer_sizes = [28 * 28, 128, 64, 10];
     let activations = [
-        ActivationFunction::Sigmoid,
-        ActivationFunction::Sigmoid,
-        ActivationFunction::Sigmoid,
+        ActivationFunction::ReLU,
+        ActivationFunction::ReLU,
+        ActivationFunction::Linear,
     ];
 
     let mut network = NeuralNetwork::new(&layer_sizes, &activations, &mut rng)?;
@@ -65,7 +65,7 @@ fn main() -> Result<()> {
 
     let mut trainer = Trainer::new(&mut network, 0.2f32, 0.7f32);
 
-    let epochs = 10_000;
+    let epochs = 1_000;
     let start_time = Instant::now();
     trainer.train(&training_data, epochs);
     let duration = start_time.elapsed();
