@@ -9,7 +9,7 @@ fn main() -> Result<()> {
     let layer_sizes = [2, 4, 1];
     let activations = [ActivationFunction::Sigmoid, ActivationFunction::Sigmoid];
 
-    let mut network = NeuralNetwork::new(&layer_sizes, &activations, &mut rng)?;
+    let mut network = NeuralNetwork::new(&layer_sizes, &activations, &mut rng);
 
     let training_data = vec![
         DataPoint {
