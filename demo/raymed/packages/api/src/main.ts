@@ -7,8 +7,27 @@ export const fastify = Fastify({});
 
 const url = "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01";
 
+const patientDetails = {
+    name: "Jonny",
+    age: 30,
+    birthDate: "1994-11-13",
+    medicalHistory: "epilepsy",
+    condition: "unconscious",
+    emergency: "seizure",
+    address: "123 Main St, Springfield, IL",
+    currentLocation: "44 Tokyo St, Springfield, IL",
+    timeOfIncident: new Date().toLocaleString(),
+
+    vitals: {
+        heartRate: 120,
+        bloodPressure: "120/80",
+        oxygenLevel: 98,
+    },
+};
+
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
+const ngrokUrl = process.env.NGROK_URL;
 
 if (!accountSid || !authToken) {
     console.error(
@@ -18,51 +37,46 @@ if (!accountSid || !authToken) {
 }
 
 const client = require("twilio")(accountSid, authToken);
-
-const SYSTEM_MESSAGE =
-    "You are an AI that calls on behalf of a human that just had a medical emergency. You have to tell the emergency services what happened and where you are (the person had a seizure and fainted). The person's name is Jonny and he's a 30 years old guy with a medical history of epilepsy. He's currently unconscious and needs immediate medical attention";
-// const SHOW_TIMING_MATH = false;
+const SYSTEM_MESSAGE = `You are an A.I. assistant that calls on behalf of a human that just had a medical emergency. You have to tell the emergency services what happened and where you are (the person had a seizure and fainted). The person's name is Jonny and he's a 30 years old guy with a medical history of epilepsy. He's currently unconscious and needs immediate medical attention. His current details are ${JSON.stringify(patientDetails)}`;
+const SHOW_TIMING_MATH = false;
 
 await fastify.register(fastifyWs);
 await fastify.register(fastifyFormBody);
 
-fastify.get("/", async (request, reply) => {
-    reply.send({ message: "Twilio Media Stream Server is running!" });
-});
-
-fastify.all("/call", async (req, res) => {
-    console.log("Initiating call... from /call");
-    try {
-        console.log("Initiating call...");
-        const call = await client.calls.create({
-            url: `https://9e6660e69843.ngrok.app/twiml`,
-            to: "+40757378264", // destination number
-            from: process.env.TWILIO_PHONE_NUMBER,
-        });
-        console.log("Call initiated");
-        res.send({ message: "Call initiated", callSid: call.sid });
-    } catch (error) {
-        console.error("Error making call:", error);
-        res.status(500).send({ error: "Failed to initiate call" });
-    }
-});
-
-fastify.post("/twiml", (req, res) => {
-    console.log("Received TwiML request");
-    const twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
-    <Response>
-        <Say>Please wait while we connect your call to the A. I. voice assistant.</Say>
-        <Pause length="1"/>
-        <Say>You can start talking!</Say>
-        <Connect>
-            <Stream url="wss://9e6660e69843.ngrok.app/media-stream" />
-        </Connect>
-    </Response>`;
-
-    res.type("text/xml").send(twimlResponse);
-});
-
 fastify.register(async (fastify) => {
+    fastify.get("/", async (request, reply) => {
+        reply.send({ message: "Twilio Media Stream Server is running!" });
+    });
+
+    fastify.all("/call", async (req, res) => {
+        console.log("Initiating call... from /call");
+        try {
+            console.log("Initiating call...");
+            const call = await client.calls.create({
+                url: `https://${ngrokUrl}/twiml`,
+                to: "+40757378264", // destination number
+                from: process.env.TWILIO_PHONE_NUMBER,
+            });
+            console.log("Call initiated");
+            res.send({ message: "Call initiated", callSid: call.sid });
+        } catch (error) {
+            console.error("Error making call:", error);
+            res.status(500).send({ error: "Failed to initiate call" });
+        }
+    });
+
+    fastify.post("/twiml", (req, res) => {
+        console.log("Received TwiML request");
+        const twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
+        <Response>
+            <Connect>
+                <Stream url="wss://${ngrokUrl}/media-stream" />
+            </Connect>
+        </Response>`;
+
+        res.type("text/xml").send(twimlResponse);
+    });
+
     fastify.get("/media-stream", { websocket: true }, (connection, req) => {
         console.log("Media stream connected");
         let streamSid = null;
@@ -94,6 +108,31 @@ fastify.register(async (fastify) => {
 
             console.log("Sending session update:", JSON.stringify(sessionUpdate));
             openAiWs.send(JSON.stringify(sessionUpdate));
+            sendInitialConversationItem();
+        };
+
+        const sendInitialConversationItem = () => {
+            const initialConversationItem = {
+                type: "conversation.item.create",
+                item: {
+                    type: "message",
+                    role: "user",
+                    content: [
+                        {
+                            type: "input_text",
+                            text: SYSTEM_MESSAGE,
+                        },
+                    ],
+                },
+            };
+
+            if (SHOW_TIMING_MATH)
+                console.log(
+                    "Sending initial conversation item:",
+                    JSON.stringify(initialConversationItem),
+                );
+            openAiWs.send(JSON.stringify(initialConversationItem));
+            openAiWs.send(JSON.stringify({ type: "response.create" }));
         };
 
         const handleSpeechStartedEvent = () => {
