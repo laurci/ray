@@ -14,6 +14,7 @@ const links = [
         label: "Patients",
     },
 ];
+
 export const Navbar = () => {
     return (
         <nav>

@@ -99,7 +99,7 @@ function App() {
     const registerDisabled = form.formState.isSubmitting || !form.formState.isValid;
 
     return (
-        <div className="flex h-full w-full flex-col items-center justify-center gap-8">
+        <div className="flex h-full w-full flex-col items-center justify-center gap-8 p-12">
             <Form {...form}>
                 <form
                     onSubmit={form.handleSubmit(onSubmit)}

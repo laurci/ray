@@ -1,4 +1,4 @@
-import { AvatarIcon } from "@radix-ui/react-icons";
+import { User } from "lucide-react";
 
 interface PatientsItemProps {
     name: string;
@@ -14,7 +14,7 @@ function PatientsItem(props: PatientsItemProps) {
     return (
         <div
             onClick={() => props.onClick(props.id)}
-            className="flex min-w-[400px] cursor-pointer flex-row justify-between rounded-3xl border-2 border-green-100 bg-gradient-to-br from-green-100 via-lime-100 to-emerald-100 p-6 text-neutral-900 transition-all hover:-translate-y-1 hover:border-green-400 hover:shadow-lg"
+            className="relative flex min-w-[400px] cursor-pointer flex-row justify-between rounded-3xl border-2 border-green-100 bg-gradient-to-br from-green-100 via-lime-100 to-emerald-100 p-6 text-neutral-900 transition-all hover:-translate-y-1 hover:border-green-400 hover:shadow-lg"
         >
             <div className="flex flex-col items-start gap-2">
                 <p className="text-sm">
@@ -39,7 +39,9 @@ function PatientsItem(props: PatientsItemProps) {
                 </p>
             </div>
 
-            <AvatarIcon className="h-12 w-12 text-neutral-900" />
+            <User className="h-12 w-12 text-neutral-900" />
+
+            <div className="absolute w-full backdrop-blur-3xl" />
         </div>
     );
 }

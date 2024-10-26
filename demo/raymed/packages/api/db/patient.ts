@@ -83,3 +83,27 @@ export async function deletePatient(id: string) {
 
     return patient;
 }
+
+export async function getPatientPrompt(id: string) {
+    const patient = await prisma.patient.findUnique({
+        where: {
+            id,
+        },
+        select: {
+            name: true,
+            age: true,
+            address: true,
+            medicalHistory: true,
+            caretakerName: true,
+            caretakerPhoneNumber: true,
+        },
+    });
+
+    if (!patient) {
+        return null;
+    }
+
+    const prompt = `You are tasked to assist ${patient.name} who is ${patient.age} years old. ${patient.name} lives at ${patient.address}. ${patient.name} has a medical history of ${patient.medicalHistory}. ${patient.name} is taken care of by ${patient.caretakerName} who can be reached at ${patient.caretakerPhoneNumber}. You are calling the emergency service on behalf of ${patient.name}. Please provide the location of the incident and any other necessary details for the emergency services to arrive as soon as possible to take care of ${patient.name}.`;
+
+    return prompt;
+}

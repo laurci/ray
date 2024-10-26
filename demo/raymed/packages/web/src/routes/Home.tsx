@@ -29,7 +29,7 @@ function Home() {
 
     return (
         <div className="flex w-full flex-col items-center justify-center p-12">
-            <div className="flex flex-row flex-wrap gap-12">
+            <div className="flex flex-row flex-wrap justify-center gap-12 md:justify-normal">
                 {patients.length > 0 ? (
                     patients.map((patient: any) => (
                         <PatientsItem onClick={handleGoToPatient} key={patient.id} {...patient} />

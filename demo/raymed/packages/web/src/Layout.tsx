@@ -2,7 +2,7 @@ import { NavLink, Outlet } from "react-router-dom";
 import "./App.css";
 function Layout() {
     return (
-        <div className="flex min-h-screen w-full flex-col items-center">
+        <div className="flex w-full flex-col items-center">
             <header className="flex w-full items-end">
                 <nav className="flex w-full flex-row items-end justify-end">
                     <ul className="flex flex-row gap-8">
@@ -37,7 +37,7 @@ function Layout() {
                     </ul>
                 </nav>
             </header>
-            <main className="flex flex-col items-center">
+            <main className="flex min-h-[calc(100vh_-_200px)] flex-col items-center">
                 <Outlet />
             </main>
         </div>

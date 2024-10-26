@@ -181,7 +181,7 @@ function Patient() {
                             variant="outline"
                             onClick={() => setIsEditMode(!isEditMode)}
                         >
-                            {isEditMode ? (
+                            {!isEditMode ? (
                                 <>
                                     Edit details <Pen />
                                 </>

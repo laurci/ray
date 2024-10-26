@@ -4,6 +4,7 @@ import {
     createPatient,
     deletePatient,
     getPatientById,
+    getPatientPrompt,
     getPatients,
     updatePatient,
 } from "../../db/patient";
@@ -120,6 +121,24 @@ async function patientRoutes(fastify: FastifyInstance, options: RouteShorthandOp
         }
 
         reply.send({ success: true, message: "Patient deleted successfully" });
+    });
+
+    fastify.get<{ Params: { id: string } }>("/patient-for-agent/:id", async (request, reply) => {
+        const { id } = request.params;
+
+        if (!id) {
+            reply.code(400).send({ error: "id is required" });
+            return;
+        }
+
+        const patientPrompt = await getPatientPrompt(id);
+
+        if (!patientPrompt) {
+            reply.code(404).send({ error: "Patient not found" });
+            return;
+        }
+
+        reply.send({ prompt: patientPrompt });
     });
 }
 
