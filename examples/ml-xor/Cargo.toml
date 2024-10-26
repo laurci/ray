@@ -1,0 +1,9 @@
+[package]
+name = "example-ml-xor"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ray-shared = { path = "../../lib/shared" }
+ray-ml = { path = "../../lib/ml" }
+rand = "0.8.5"

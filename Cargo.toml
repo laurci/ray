@@ -1,0 +1,13 @@
+[workspace]
+resolver = "2"
+members = [
+    "lib/shared",
+    "lib/ml",
+
+    "tools/bin2mem",
+
+    "examples/ml-xor",
+    "examples/ml-mnist",
+
+    "soc/firmware-test",
+]
