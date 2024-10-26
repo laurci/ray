@@ -1,0 +1,3 @@
+[submodule "soc/vendor/VexRiscv"]
+	path = soc/vendor/VexRiscv
+	url = https://github.com/SpinalHDL/VexRiscv.git
