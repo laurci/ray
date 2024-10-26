@@ -34,3 +34,4 @@ __pycache__
 
 ### hw_build ###
 hw_interface/build
+hw_interface/.vscode/c_cpp_properties.json
