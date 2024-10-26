@@ -1,0 +1,13 @@
+[package]
+name = "firmware-test"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+riscv-rt = "0.13.0"
+panic-halt = "1.0.0"
+
+[profile.release]
+codegen-units = 1
+debug = true
+lto = true

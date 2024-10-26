@@ -1,0 +1,22 @@
+[tasks.strip]
+command = "/opt/riscv/bin/riscv32-unknown-elf-strip"
+args= [
+    "../../target/riscv32imac-unknown-none-elf/release/firmware-test",
+]
+
+[tasks.objcopy]
+command = "/opt/riscv/bin/riscv32-unknown-elf-objcopy"
+args= [
+    "-O", "binary",
+    "../../target/riscv32imac-unknown-none-elf/release/firmware-test",
+    "../../target/riscv32imac-unknown-none-elf/release/firmware-test.bin"
+
+]
+dependencies = ["strip"]
+
+[tasks.objdump]
+command="/opt/riscv/bin/riscv32-unknown-elf-objdump"
+args = [
+    "-d",
+    "../../target/riscv32imac-unknown-none-elf/release/firmware-test"
+]

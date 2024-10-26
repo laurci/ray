@@ -13,6 +13,7 @@ lazy val raysoc = (project in file("."))
     Compile / scalaSource := baseDirectory.value / "hw" / "spinal",
     libraryDependencies ++= Seq(spinalCore, spinalLib, spinalIdslPlugin)
   )
+  .dependsOn(root)
 
 lazy val root = (project in file("vendor/VexRiscv"))
 
