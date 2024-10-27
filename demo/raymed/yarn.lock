@@ -1443,6 +1443,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/twilio@npm:^3.19.3":
+  version: 3.19.3
+  resolution: "@types/twilio@npm:3.19.3"
+  dependencies:
+    twilio: "npm:*"
+  checksum: 10c0/29b503a6ca56ec47cb803521ed1124495ad1fb81325115a183033c9e3cb54a36c0bdf819e6c58fb2c4ee25e69d68b8fc927d3c3fda4d85de483bbf9d990d472f
+  languageName: node
+  linkType: hard
+
 "@types/ws@npm:*, @types/ws@npm:^8.5.12":
   version: 8.5.12
   resolution: "@types/ws@npm:8.5.12"
@@ -1757,6 +1766,7 @@ __metadata:
     "@prisma/client": "npm:^5.21.1"
     "@types/aws-iot-device-sdk": "npm:^2.2.8"
     "@types/node": "npm:^22.2.0"
+    "@types/twilio": "npm:^3.19.3"
     "@types/ws": "npm:^8.5.12"
     aws-iot-device-sdk: "npm:^2.2.15"
     cors: "npm:^2.8.5"
@@ -5822,7 +5832,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"twilio@npm:^5.3.5":
+"twilio@npm:*, twilio@npm:^5.3.5":
   version: 5.3.5
   resolution: "twilio@npm:5.3.5"
   dependencies:

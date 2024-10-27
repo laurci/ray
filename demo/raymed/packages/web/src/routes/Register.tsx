@@ -92,7 +92,6 @@ function App() {
                     .catch((err) => setMessage(err.message)),
             )
             .catch((err) => console.log("Error on registering patient", err));
-        console.log(patient);
         form.reset();
     };
 
