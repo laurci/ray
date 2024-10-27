@@ -109,7 +109,7 @@ async function mqttRoutes(fastify: FastifyInstance, options: RouteShorthandOptio
                     message: "incident_call",
                     patientId: id,
                     geoLocation: { lat: 47.048013, long: 21.92426 },
-                    incidentType: "heart_attack",
+                    incidentType: "brain_attack",
                 }),
                 undefined,
                 (error: Error | undefined) => {
