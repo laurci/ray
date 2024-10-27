@@ -51,7 +51,6 @@ async function mqttRoutes(fastify: FastifyInstance, options: RouteShorthandOptio
 
         console.log("messageJson", messageJson);
         if (messageJson.message === "incident_call") {
-            console.log("will call the call route");
             const response = await fastify.inject({
                 method: "GET",
                 url: `/call/${messageJson.patientId}`,

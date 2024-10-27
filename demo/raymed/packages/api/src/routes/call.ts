@@ -36,12 +36,15 @@ const client = require("twilio")(accountSid, authToken);
 const SYSTEM_MESSAGE = `You are an A.I. assistant that calls on behalf of a human that just had a medical emergency. You have to tell the emergency services what happened and where you are (the person had a seizure and fainted). The person's name is Jonny and he's a 30 years old guy with a medical history of epilepsy. He's currently unconscious and needs immediate medical attention. His current details are ${JSON.stringify(patientDetails)}`;
 const SHOW_TIMING_MATH = false;
 
-var prompt = "";
-
 export default function callRoute(fastify: FastifyInstance) {
     fastify.all<{ Params: { id: string } }>("/call/:id", async (req, res) => {
         console.log("Initiating call... from /call");
         const id = req.params.id;
+
+        const response = await fastify.inject({ method: "GET", url: `/patient/${id}` });
+
+        const patientData = await response.json();
+
         try {
             console.log("Initiating call...");
             const call = await client.calls.create({
@@ -49,8 +52,18 @@ export default function callRoute(fastify: FastifyInstance) {
                 to: "+40757378264", // destination number
                 from: process.env.TWILIO_PHONE_NUMBER,
             });
+
+            const message = await client.messages.create({
+                body: `Dear ${patientData.caretakerName}, ${patientData.name} has had a medical emergency. The emergency services have been contacted and are on their way at the following address: ${patientData.address}.`,
+                to: patientData.caretakerPhoneNumber,
+                from: process.env.TWILIO_PHONE_NUMBER,
+            });
+
             console.log("Call initiated");
-            res.send({ message: "Call initiated", callSid: call.sid });
+            res.send({
+                message: "Call initiated and message send to the care taker.",
+                callSid: call.sid,
+            });
         } catch (error) {
             console.error("Error making call:", error);
             res.status(500).send({ error: "Failed to initiate call" });
@@ -84,8 +97,8 @@ export default function callRoute(fastify: FastifyInstance) {
                 });
 
                 const data = await response.json();
-                console.log("data prompt ----", data);
-                const promptFromDb = data.patientPrompt;
+
+                const patientPrompt = data.patientPrompt;
 
                 let streamSid = null;
                 let latestMediaTimestamp = 0;
@@ -129,7 +142,7 @@ export default function callRoute(fastify: FastifyInstance) {
                             content: [
                                 {
                                     type: "input_text",
-                                    text: prompt,
+                                    text: patientPrompt,
                                 },
                             ],
                         },
@@ -185,7 +198,7 @@ export default function callRoute(fastify: FastifyInstance) {
 
                 openAiWs.on("open", () => {
                     console.log("Connected to the OpenAI Realtime API");
-                    setTimeout(() => initializeSession(promptFromDb), 300);
+                    setTimeout(() => initializeSession(patientPrompt), 300);
                 });
 
                 openAiWs.on("message", (data) => {

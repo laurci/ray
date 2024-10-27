@@ -84,7 +84,7 @@ export async function deletePatient(id: string) {
     return patient;
 }
 
-export async function getPatientPrompt(id: string) {
+export async function getPatientPrompt(id: string): Promise<string | null> {
     const patient = await prisma.patient.findUnique({
         where: {
             id,
