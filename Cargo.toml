@@ -10,4 +10,6 @@ members = [
     "examples/ml-mnist",
 
     "soc/firmware-test",
+
+    "demo/raymed/packages/classifier",
 ]

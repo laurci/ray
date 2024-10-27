@@ -893,6 +893,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "raymed-classifier"
+version = "0.1.0"
+dependencies = [
+ "csv",
+ "rand",
+ "ray-ml",
+ "ray-shared",
+]
+
+[[package]]
 name = "rayon"
 version = "1.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
