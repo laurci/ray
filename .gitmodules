@@ -1,3 +1,6 @@
 [submodule "soc/vendor/VexRiscv"]
 	path = soc/vendor/VexRiscv
 	url = https://github.com/SpinalHDL/VexRiscv.git
+[submodule "demo/raymed/raymed-hw-interface"]
+	path = demo/raymed/raymed-hw-interface
+	url = git@github.com:laurci/raymed-hw-interface.git
