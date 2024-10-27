@@ -123,15 +123,19 @@ async function patientRoutes(fastify: FastifyInstance, options: RouteShorthandOp
         reply.send({ success: true, message: "Patient deleted successfully" });
     });
 
-    fastify.get<{ Params: { id: string } }>("/patient-for-agent/:id", async (request, reply) => {
+    fastify.post<{
+        Params: { id: string };
+        Body: { incidentLocation?: string; incidentType: string };
+    }>("/patient-for-agent/:id", async (request, reply) => {
         const { id } = request.params;
+        const { incidentLocation, incidentType } = request.body;
 
         if (!id) {
             reply.code(400).send({ error: "id is required" });
             return;
         }
 
-        const patientPrompt = await getPatientPrompt(id);
+        const patientPrompt = await getPatientPrompt(id, incidentType, incidentLocation);
 
         if (!patientPrompt) {
             reply.code(404).send({ error: "Patient or patient not found" });
