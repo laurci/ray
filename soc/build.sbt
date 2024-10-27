@@ -11,7 +11,8 @@ val spinalIdslPlugin = compilerPlugin("com.github.spinalhdl" %% "spinalhdl-idsl-
 lazy val raysoc = (project in file("."))
   .settings(
     Compile / scalaSource := baseDirectory.value / "hw" / "spinal",
-    libraryDependencies ++= Seq(spinalCore, spinalLib, spinalIdslPlugin)
+    libraryDependencies ++= Seq(spinalCore, spinalLib, spinalIdslPlugin),
+    libraryDependencies += "com.lihaoyi" %% "upickle" % "3.1.0"
   )
   .dependsOn(root)
 

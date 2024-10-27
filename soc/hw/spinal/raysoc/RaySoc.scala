@@ -14,7 +14,6 @@ import spinal.lib.master
 import scala.collection.mutable.ArrayBuffer
 import spinal.lib.bus.misc.SizeMapping
 
-
 case class RaySoc() extends Component {
   val io = new Bundle {
     val leds = out Bits(4 bits)
@@ -184,6 +183,9 @@ case class RaySoc() extends Component {
       rxFifoDepth = 16
     ))
     apbMapping += uartCtrl.io.apb -> (0x10010000L, 4 kB)
+
+    // val ml = MlExec()
+    // apbMapping += ml.io.apb -> (0x10020000L, 4 kB)
 
     val apbDecoder = Apb3Decoder(
       master = apbBridge.io.apb,

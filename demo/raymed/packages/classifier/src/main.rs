@@ -28,7 +28,7 @@ fn main() -> Result<()> {
         "train" => train()?,
         "eval" => eval()?,
         "convert" => convert()?,
-        _ => println!("Invalid argument. Use 'train' or 'eval'."),
+        _ => println!("Invalid argument. Use 'train' or 'eval' or 'convert'."),
     }
 
     Ok(())
