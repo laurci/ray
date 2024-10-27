@@ -7,6 +7,11 @@ const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 const ngrokUrl = process.env.NGROK_URL;
 
+const incidentTypes = {
+    heart_attack: "heart attack",
+    brain_attack: "brain attack",
+};
+
 if (!accountSid || !authToken) {
     console.error(
         "Please provide TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN in the environment variables",
@@ -42,7 +47,7 @@ export default function callRoute(fastify: FastifyInstance) {
             });
 
             const message = await client.messages.create({
-                body: `Dear ${patientData.caretakerName}, ${patientData.name} has had a medical emergency of type ${incidentType}. The emergency services have been contacted and are on their way at the following address: ${incidentLocation}.`,
+                body: `Dear ${patientData.caretakerName}, ${patientData.name} has had a medical emergency of type ${incidentTypes[incidentType]}. The emergency services have been contacted and are on their way at the following address: ${incidentLocation}.`,
                 to: patientData.caretakerPhoneNumber,
                 from: process.env.TWILIO_PHONE_NUMBER,
             });
