@@ -27,6 +27,7 @@ fn main() -> Result<()> {
     match args[1].as_str() {
         "train" => train()?,
         "eval" => eval()?,
+        "convert" => convert()?,
         _ => println!("Invalid argument. Use 'train' or 'eval'."),
     }
 
@@ -148,6 +149,15 @@ fn eval() -> Result<()> {
 
     let accuracy = correct as f32 / test_data.len() as f32 * 100.0;
     println!("Quantized Network Test Accuracy: {:.2}%", accuracy);
+
+    Ok(())
+}
+
+fn convert() -> Result<()> {
+    let requant_model_path = PathBuf::from("model_requantized.bin");
+    let requantized_network = QuantizedNeuralNetwork::load_from_file(&requant_model_path)?;
+
+    requantized_network.export_raysoc_network(&PathBuf::from("model.rsn"))?;
 
     Ok(())
 }

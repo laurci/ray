@@ -3,7 +3,7 @@ pub use ndarray as nd;
 use nd::{Array1, Array2, Axis};
 use rand::rngs::StdRng;
 use rand_distr::{Distribution, Normal};
-use ray_shared::result::Result;
+use ray_shared::result::{bail, Result};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
@@ -196,6 +196,9 @@ pub struct QuantizedNeuralNetwork {
     pub layers: Vec<QuantizedLayer>,
 }
 
+#[derive(Clone, Serialize, Debug)]
+pub struct RaySocQuantizedFormat {}
+
 impl QuantizedNeuralNetwork {
     pub fn feedforward(&self, input: &Array1<i8>) -> Array1<i8> {
         let mut activations = input.clone();
@@ -225,6 +228,56 @@ impl QuantizedNeuralNetwork {
         let file = File::create(path)?;
         let writer = BufWriter::new(file);
         bincode::serialize_into(writer, self)?;
+        Ok(())
+    }
+
+    pub fn export_raysoc_network(&self, path: &PathBuf) -> Result<()> {
+        let mut layers = Vec::new();
+
+        if let Some(first_layer) = self.layers.first() {
+            let input_size = first_layer.weights.shape()[1];
+            layers.push(input_size);
+        } else {
+            bail!("The neural network has no layers.");
+        }
+
+        for layer in &self.layers {
+            let output_size = layer.weights.shape()[0];
+            layers.push(output_size);
+        }
+
+        let mut weights = Vec::new();
+        let mut biases = Vec::new();
+
+        for layer in &self.layers {
+            let w = layer.weights.map(|&x| x as i32);
+            let weight_rows = w.shape()[0];
+            let weight_cols = w.shape()[1];
+            let mut weight_matrix = Vec::with_capacity(weight_rows);
+
+            for row in w.outer_iter() {
+                weight_matrix.push(row.to_vec());
+            }
+            weights.push(weight_matrix);
+
+            biases.push(layer.biases.to_vec());
+        }
+
+        #[derive(Serialize)]
+        struct RaySocNetworkData {
+            layers: Vec<usize>,
+            weights: Vec<Vec<Vec<i32>>>,
+            biases: Vec<Vec<i32>>,
+        }
+
+        let network_data = RaySocNetworkData {
+            layers,
+            weights,
+            biases,
+        };
+
+        let json = serde_json::to_string_pretty(&network_data)?;
+        std::fs::write(path, json)?;
         Ok(())
     }
 
