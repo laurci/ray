@@ -16,9 +16,7 @@ function Home() {
                 const response = await fetch(`${import.meta.env.VITE_API_URL}/patients`);
                 const data = await response.json();
 
-                console.log("data");
                 setPatients(data);
-                console.log(data);
             } catch (error) {
                 console.log(error);
             }

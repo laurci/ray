@@ -3,24 +3,6 @@ import WebSocket from "ws";
 
 const url = "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01";
 
-const patientDetails = {
-    name: "Jonny",
-    age: 30,
-    birthDate: "1994-11-13",
-    medicalHistory: "epilepsy",
-    condition: "unconscious",
-    emergency: "seizure",
-    address: "123 Main St, Springfield, IL",
-    currentLocation: "44 Tokyo St, Springfield, IL",
-    timeOfIncident: new Date().toLocaleString(),
-
-    vitals: {
-        heartRate: 120,
-        bloodPressure: "120/80",
-        oxygenLevel: 98,
-    },
-};
-
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 const ngrokUrl = process.env.NGROK_URL;
@@ -33,13 +15,19 @@ if (!accountSid || !authToken) {
 }
 
 const client = require("twilio")(accountSid, authToken);
-const SYSTEM_MESSAGE = `You are an A.I. assistant that calls on behalf of a human that just had a medical emergency. You have to tell the emergency services what happened and where you are (the person had a seizure and fainted). The person's name is Jonny and he's a 30 years old guy with a medical history of epilepsy. He's currently unconscious and needs immediate medical attention. His current details are ${JSON.stringify(patientDetails)}`;
 const SHOW_TIMING_MATH = false;
 
 export default function callRoute(fastify: FastifyInstance) {
-    fastify.all<{ Params: { id: string } }>("/call/:id", async (req, res) => {
-        console.log("Initiating call... from /call");
+    fastify.all<{
+        Params: { id: string };
+        Body: {
+            incidentLocation: string;
+            incidentType: string;
+        };
+    }>("/call/:id", async (req, res) => {
         const id = req.params.id;
+        const incidentLocation = req.body.incidentLocation;
+        const incidentType = req.body.incidentType;
 
         const response = await fastify.inject({ method: "GET", url: `/patient/${id}` });
 
@@ -48,35 +36,45 @@ export default function callRoute(fastify: FastifyInstance) {
         try {
             console.log("Initiating call...");
             const call = await client.calls.create({
-                url: `https://${ngrokUrl}/twiml/${id}`,
+                url: `https://${ngrokUrl}/twiml/${id}?incidentLocation=${encodeURIComponent(incidentLocation ?? "")}&incidentType=${encodeURIComponent(incidentType ?? "")}`,
                 to: "+40757378264", // destination number
                 from: process.env.TWILIO_PHONE_NUMBER,
             });
 
             const message = await client.messages.create({
-                body: `Dear ${patientData.caretakerName}, ${patientData.name} has had a medical emergency. The emergency services have been contacted and are on their way at the following address: ${patientData.address}.`,
+                body: `Dear ${patientData.caretakerName}, ${patientData.name} has had a medical emergency of type ${incidentType}. The emergency services have been contacted and are on their way at the following address: ${incidentLocation}.`,
                 to: patientData.caretakerPhoneNumber,
                 from: process.env.TWILIO_PHONE_NUMBER,
             });
 
-            console.log("Call initiated");
             res.send({
                 message: "Call initiated and message send to the care taker.",
                 callSid: call.sid,
+                messageSid: message.sid,
             });
         } catch (error) {
             console.error("Error making call:", error);
             res.status(500).send({ error: "Failed to initiate call" });
+            return;
         }
     });
 
-    fastify.post<{ Params: { id: string } }>("/twiml/:id", (req, res) => {
+    fastify.post<{
+        Params: { id: string };
+        Querystring: { incidentType: string; incidentLocation?: string };
+    }>("/twiml/:id", (req, res) => {
         console.log("Received TwiML request");
         const id = req.params.id;
+        const incidentLocation = req.query?.incidentLocation;
+        const incidentType = req.query.incidentType;
+
+        const encodedIncidentLocation = Buffer.from(incidentLocation ?? "").toString("hex");
+
+        const fullUrl = `wss://${ngrokUrl}/media-stream/${id}/${incidentType}/${encodedIncidentLocation}`;
         const twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
         <Response>
             <Connect>
-                <Stream url="wss://${ngrokUrl}/media-stream/${id}" />
+                 <Stream url="${fullUrl}" />
             </Connect>
         </Response>`;
 
@@ -84,16 +82,30 @@ export default function callRoute(fastify: FastifyInstance) {
     });
 
     fastify.register(async (fastify) => {
-        fastify.get<{ Params: { id: string } }>(
-            "/media-stream/:id",
+        fastify.get<{
+            Params: { id: string; incidentType: string; encodedIncidentLocation: string };
+        }>(
+            "/media-stream/:id/:incidentType/:encodedIncidentLocation",
             { websocket: true },
             async (connection, req) => {
                 console.log("Media stream connected");
                 const id = req.params.id;
+                const encodedIncidentLocation = req.params.encodedIncidentLocation;
+                const incidentLocation = Buffer.from(encodedIncidentLocation, "hex").toString(
+                    "utf-8",
+                );
+                const incidentType = req.params.incidentType;
 
                 const response = await fastify.inject({
-                    method: "GET",
+                    method: "POST",
                     url: `/patient-for-agent/${id}`,
+                    payload: {
+                        incidentLocation: incidentLocation,
+                        incidentType: incidentType,
+                    },
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
                 });
 
                 const data = await response.json();
@@ -114,7 +126,6 @@ export default function callRoute(fastify: FastifyInstance) {
                 });
 
                 const initializeSession = (prompt: string) => {
-                    console.log("prompt for initializeSession", prompt);
                     const sessionUpdate = {
                         type: "session.update",
                         session: {
@@ -153,7 +164,7 @@ export default function callRoute(fastify: FastifyInstance) {
                             "Sending initial conversation item:",
                             JSON.stringify(initialConversationItem),
                         );
-                    openAiWs.send(JSON.stringify(initialConversationItem));
+                    // openAiWs.send(JSON.stringify(initialConversationItem));
                     openAiWs.send(JSON.stringify({ type: "response.create" }));
                 };
 
@@ -232,6 +243,10 @@ export default function callRoute(fastify: FastifyInstance) {
 
                         if (response.type === "input_audio_buffer.speech_started") {
                             handleSpeechStartedEvent();
+                        }
+
+                        if (response.type === "error") {
+                            console.error("Error from OpenAI:", response);
                         }
                     } catch (error) {
                         console.error(

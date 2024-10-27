@@ -90,7 +90,6 @@ function Patient() {
                     .catch((err) => setMessage(err.message)),
             )
             .catch((err) => console.log("Error on registering patient", err));
-        console.log(patient);
         setIsEditMode(false);
     };
 
@@ -101,7 +100,6 @@ function Patient() {
             const response = await fetch(`${import.meta.env.VITE_API_URL}/patient/${params.id}`);
             const data = await response.json();
 
-            console.log("data", data);
             setPatient({
                 patientName: data.name,
                 patientAge: data.age,
@@ -118,7 +116,7 @@ function Patient() {
             form.setValue("caretakerName", data.caretakerName);
             form.setValue("caretakerPhoneNumber", data.caretakerPhoneNumber);
         } catch (error) {
-            console.log(error);
+            console.log("Error on fetching patient: ", error);
         }
     };
 
