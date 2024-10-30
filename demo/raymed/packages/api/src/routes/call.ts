@@ -42,7 +42,7 @@ export default function callRoute(fastify: FastifyInstance) {
             console.log("Initiating call...");
             const call = await client.calls.create({
                 url: `https://${ngrokUrl}/twiml/${id}?incidentLocation=${encodeURIComponent(incidentLocation ?? "")}&incidentType=${encodeURIComponent(incidentType ?? "")}`,
-                to: "+40757378264", // destination number
+                to: process.env.EMERGENCY_SERVICE_NUMBER, // destination number
                 from: process.env.TWILIO_PHONE_NUMBER,
             });
 
